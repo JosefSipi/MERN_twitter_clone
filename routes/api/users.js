@@ -4,9 +4,17 @@ const bcrypt = require('bcryptjs');
 const User = require('../../models/User');
 const keys = require('../../config/keys');
 const jwt = require('jsonwebtoken');
+const validateRegisterInput = require('../../validation/register');
+const validateLoginInput = require('../../validation/login');
+
 
 router.post('/register', (req, res) => {
-   
+    
+    const {errors, isValid } = validateRegisterInput(req.body);
+
+    if (!isValid) {
+        return res.status(400).json(errors);
+    }
 
     User.findOne({ handle: req.body.handle })
 
@@ -30,12 +38,18 @@ router.post('/register', (req, res) => {
                     newUser.password = hash;
                     newUser.save()
                         .then(user => { 
-                            const payload = {id: user.id, handle: user.handle };
+                            const payload = {
+                                id: user.id, 
+                                handle: user.handle,
+                                email: user.email,
+                                password: user.password
+                            };
                         
                         jwt.sign(payload, keys.secretOrKey, { expiresIn: 3600}, (err, token) => {
                             res.json({
                                 success: true,
-                                token: "Bearer " + token
+                                token: "Bearer " + token,
+                                payload
                             });
                         });
                     })
@@ -48,6 +62,12 @@ router.post('/register', (req, res) => {
 
 
 router.post('/login', (req, res) => {
+
+    const { errors, isValid } = validateLoginInput(req.body);
+
+    if(!isValid) {
+        return res.status(400).json(errors);
+    }
 
     const handle = req.body.handle;
     const password = req.body.password;
